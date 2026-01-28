@@ -1,28 +1,37 @@
-# abvx-shortener
+# ABVX Shortener
 
-Minimal, self-hosted short-link service for your own domain (Cloudflare Workers + KV) + a Chrome extension that shortens the current tab URL and copies it.
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](./LICENSE)
+[![Built for Cloudflare Workers](https://img.shields.io/badge/Cloudflare-Workers-f38020?logo=cloudflare&logoColor=white)](https://developers.cloudflare.com/workers/)
+[![Chrome Extension (MV3)](https://img.shields.io/badge/Chrome-Extension-4285F4?logo=googlechrome&logoColor=white)](https://developer.chrome.com/docs/extensions/)
 
-Designed for personal use (no analytics).
+A minimal, self-hosted URL shortener for your own domain (**Cloudflare Workers + KV**) + a Chrome extension that shortens the current tab URL and copies it.
 
-## Features
-- `https://abvx.xyz/<slug>` → **302** redirect
-- `POST /api/shorten` → deterministic slug (same URL → same slug)
-- Cloudflare KV storage (slug → url)
-- Simple auth via `X-API-Key`
-- Chrome extension (Manifest V3) → “Shorten & Copy”
+- No analytics
+- Deterministic slugs (same URL → same short link)
+- Simple auth with an API key
+
+![Screenshot](.github/assets/screenshot.png)
+
+---
+
+## How it works
+- `GET /:slug` → **302** redirect to the stored long URL
+- `POST /api/shorten` → stores `slug → url` in Cloudflare KV and returns `{ slug, shortUrl }`
 
 ## Repo structure
 - `worker/` — Cloudflare Worker
-- `extension/` — Chrome extension
+- `extension/` — Chrome extension (Manifest V3)
 
-## Worker setup (Cloudflare)
-### 1) Install deps
+---
+
+## Quick start (Cloudflare)
+### 1) Install
 ```bash
 cd worker
 npm i
 ```
 
-### 2) Login to Cloudflare
+### 2) Login
 ```bash
 npx wrangler login
 ```
@@ -30,51 +39,70 @@ npx wrangler login
 ### 3) Create KV namespace
 ```bash
 npx wrangler kv namespace create "LINKS"
-# Copy the id into worker/wrangler.toml (kv_namespaces[].id)
 ```
+Copy the namespace id into `worker/wrangler.toml` under `kv_namespaces`.
 
-### 4) Set the API key secret
+### 4) Set API key secret
 ```bash
-cd worker
 npx wrangler secret put API_KEY
 ```
 
 ### 5) Deploy
 ```bash
-cd worker
 npx wrangler deploy
 ```
 
-### 6) Bind a custom domain
-In Cloudflare dashboard: **Workers & Pages → your worker → Triggers → Custom Domains**.
-Attach `abvx.xyz` (or a subdomain like `go.abvx.xyz`).
+### 6) Custom domain
+Recommended: use a subdomain like `go.yourdomain.com`.
 
-## Chrome extension setup
+Cloudflare Dashboard → Workers & Pages → your worker → **Triggers → Custom Domains**.
+
+---
+
+## Chrome extension (Load unpacked)
 1) Open `chrome://extensions`
 2) Enable **Developer mode**
 3) Click **Load unpacked**
 4) Select the `extension/` folder
 
-Then click the extension button → it will shorten the current tab URL and copy the short link.
+The extension will:
+- read current tab URL
+- call `POST https://go.abvx.xyz/api/shorten`
+- copy the short URL to clipboard
+
+---
 
 ## API
-### Create/resolve short link
+### Health
 ```bash
-curl -X POST "https://abvx.xyz/api/shorten" \
+curl https://go.abvx.xyz/health
+```
+
+### Shorten
+```bash
+curl -X POST "https://go.abvx.xyz/api/shorten" \
   -H "Content-Type: application/json" \
   -H "X-API-Key: <your-key>" \
   -d '{"url":"https://example.com/some/long/path?x=1"}'
 ```
 
-Response:
-```json
-{"slug":"k3v9p2","shortUrl":"https://abvx.xyz/k3v9p2"}
-```
+---
 
-## Notes / caveats
-- Deterministic slugs are made from a stable hash of the canonicalized URL.
-- No analytics by design.
-- API key is stored in the extension, so treat it as “good enough for personal use”, not bank-grade security.
+## Notes / security
+This is intended for personal use.
+
+- The API key is stored in the extension, so treat it as “good enough for personal workflows”, not bank-grade security.
+- Optional hardening: Cloudflare WAF / rate limiting for `POST /api/shorten`.
+
+---
+
+## Links
+- Website: https://abvx.xyz
+- Medium: https://abvcreative.medium.com
+- Substack: https://abvx.substack.com/
+- Email: mailto:a.biletskiy@gmail.com
+
+---
 
 ## License
-MIT
+MIT — see [LICENSE](./LICENSE).
