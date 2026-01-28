@@ -1,0 +1,18 @@
+name = "abvx-shortener"
+main = "src/index.ts"
+compatibility_date = "2026-01-27"
+
+# Add your account_id if you want (optional; wrangler can infer after login)
+# account_id = "..."
+
+kv_namespaces = [
+  { binding = "LINKS", id = "REPLACE_ME" }
+]
+
+[vars]
+# Used for building shortUrl in API responses.
+BASE_URL = "https://abvx.xyz"
+
+# Rate limit (per IP) for POST /api/shorten
+RATE_LIMIT_WINDOW_SEC = 60
+RATE_LIMIT_MAX = 30

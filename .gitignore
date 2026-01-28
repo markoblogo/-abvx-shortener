@@ -1,0 +1,12 @@
+# OS
+.DS_Store
+
+# Worker
+worker/node_modules/
+worker/.wrangler/
+
+# Extension
+extension/.DS_Store
+
+# Secrets
+.env
