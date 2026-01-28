@@ -1,4 +1,4 @@
-const API_BASE = "https://abvx.xyz";
+const API_BASE = "https://go.abvx.xyz";
 
 const apiKeyInput = document.getElementById("apiKey");
 const btn = document.getElementById("shortenBtn");

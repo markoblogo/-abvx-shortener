@@ -11,7 +11,7 @@ kv_namespaces = [
 
 [vars]
 # Used for building shortUrl in API responses.
-BASE_URL = "https://abvx.xyz"
+BASE_URL = "https://go.abvx.xyz"
 
 # Rate limit (per IP) for POST /api/shorten
 RATE_LIMIT_WINDOW_SEC = 60

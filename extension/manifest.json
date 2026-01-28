@@ -8,7 +8,7 @@
     "default_popup": "popup.html"
   },
   "permissions": ["activeTab", "clipboardWrite", "storage"],
-  "host_permissions": ["https://abvx.xyz/*"],
+  "host_permissions": ["https://go.abvx.xyz/*"],
   "icons": {
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",
