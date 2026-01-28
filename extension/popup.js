@@ -6,6 +6,7 @@ const statusEl = document.getElementById("status");
 
 function setStatus(msg) {
   statusEl.textContent = msg;
+  statusEl.style.display = msg ? "block" : "none";
 }
 
 async function loadKey() {
