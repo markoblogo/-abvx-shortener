@@ -6,7 +6,7 @@ compatibility_date = "2026-01-27"
 # account_id = "..."
 
 kv_namespaces = [
-  { binding = "LINKS", id = "REPLACE_ME" }
+  { binding = "LINKS", id = "e35819886430430a992b4b73b0d6c6ea" }
 ]
 
 [vars]
