@@ -96,13 +96,5 @@ This is intended for personal use.
 
 ---
 
-## Links
-- Website: https://abvx.xyz
-- Medium: https://abvcreative.medium.com
-- Substack: https://abvx.substack.com/
-- Email: mailto:a.biletskiy@gmail.com
-
----
-
 ## License
 MIT — see [LICENSE](./LICENSE).
