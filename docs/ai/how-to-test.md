@@ -7,9 +7,9 @@
 ## Commands
 - Fast check: `(not detected)`
 - Full check: `(not detected)`
-- Tests: `(not detected)`
-- Lint: `(not detected)`
-- Format: `(not detected)`
+- Tests: `not available`
+- Lint: `npm --prefix worker run lint`
+- Format: `npm --prefix worker run format`
 
 ## Policy
 - Run fast checks while editing.

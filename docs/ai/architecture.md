@@ -4,7 +4,7 @@
 - Project: `abvx-shortener`
 - Stack profile: node
 - Source dirs: `worker`
-- Docs: `README.md`, `RUNBOOK.md`
+- Docs: `README.md`
 
 ## Agent guidance
 - Prefer localized edits near existing modules.

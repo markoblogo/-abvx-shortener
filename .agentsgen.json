@@ -31,7 +31,14 @@
       "worker"
     ]
   },
-  "commands": {},
+  "commands": {
+    "install": "npm --prefix worker install",
+    "dev": "npm --prefix worker run dev",
+    "build": "npm --prefix worker run deploy",
+    "lint": "npm --prefix worker run lint",
+    "format": "npm --prefix worker run format",
+    "test": "not available"
+  },
   "evidence": {
     "python": [],
     "node": [

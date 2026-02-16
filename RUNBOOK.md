@@ -3,15 +3,26 @@
 ## Quickstart
 
 <!-- AGENTSGEN:START section=quickstart -->
-- (no quickstart commands configured)
+```sh
+npm --prefix worker install
+```
+```sh
+npm --prefix worker run dev
+```
+```sh
+not available
+```
+```sh
+npm --prefix worker run lint
+```
 <!-- AGENTSGEN:END section=quickstart -->
 
 ## Common Tasks
 
 <!-- AGENTSGEN:START section=common_tasks -->
-- Run tests: (not set)
-- Lint: (not set)
-- Build: (not set)
+- Run tests: `not available`
+- Lint: `npm --prefix worker run lint`
+- Build: `npm --prefix worker run deploy`
 <!-- AGENTSGEN:END section=common_tasks -->
 
 ## Troubleshooting

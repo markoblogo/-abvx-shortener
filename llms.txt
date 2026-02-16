@@ -11,11 +11,11 @@ Agent context bundle (LLMO Pack):
 - Contributing: CONTRIBUTING_AI.md
 
 Quick commands:
-- install: (not detected)
-- dev: (not detected)
-- test: (not detected)
-- lint: (not detected)
-- build: (not detected)
+- install: npm --prefix worker install
+- dev: npm --prefix worker run dev
+- test: not available
+- lint: npm --prefix worker run lint
+- build: npm --prefix worker run deploy
 
 Notes:
 - Keep these files concise and command-accurate. Avoid speculative guidance.

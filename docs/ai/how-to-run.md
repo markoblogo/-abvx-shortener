@@ -8,9 +8,9 @@
 - CI workflows: `.github/workflows/`
 
 ## Commands
-- Install: `(not detected)`
-- Dev: `(not detected)`
-- Build: `(not detected)`
+- Install: `npm --prefix worker install`
+- Dev: `npm --prefix worker run dev`
+- Build: `npm --prefix worker run deploy`
 
 ## TODO (maintainer)
 - If dev/build are not detected, set explicit commands in `.agentsgen.json -> commands`.
