@@ -98,11 +98,12 @@ async function rateLimitOk(env: Env, ip: string): Promise<boolean> {
 }
 
 const LANDING_HTML = `<!doctype html>
-<html lang="en">
+<html lang="en" data-style="default">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>ABVX Shortener</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/markoblogo/AsciiTheme@main/dist/style.css" />
     <style>
       :root {
         --bg: #0b0c10;
@@ -146,8 +147,23 @@ const LANDING_HTML = `<!doctype html>
       .head {
         display: flex;
         align-items: center;
+        justify-content: space-between;
         gap: 12px;
         padding: 18px 18px 10px;
+      }
+
+      .head-main {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-width: 0;
+      }
+
+      .head-actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex: 0 0 auto;
       }
 
       .logo {
@@ -233,6 +249,29 @@ const LANDING_HTML = `<!doctype html>
         padding: 6px 10px;
         border-radius: 999px;
       }
+
+      .head-actions .ascii-theme-toggle-group { display: inline-flex; gap: 8px; }
+      .head-actions .ascii-theme-toggle-btn {
+        border: 1px solid var(--border);
+        background: rgba(255, 255, 255, 0.06);
+        color: var(--text);
+        border-radius: 999px;
+        padding: 6px 10px;
+        min-height: 30px;
+        box-shadow: none;
+        line-height: 1;
+        font-size: 12px;
+      }
+      .head-actions .ascii-theme-toggle-btn:hover {
+        filter: brightness(1.08);
+      }
+
+      @media (max-width: 640px) {
+        .head {
+          flex-wrap: wrap;
+          align-items: flex-start;
+        }
+      }
     </style>
   </head>
 
@@ -240,16 +279,21 @@ const LANDING_HTML = `<!doctype html>
     <div class="wrap">
       <div class="card">
         <div class="head">
-          <div class="logo" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M10.5 13.5l3-3" stroke="#0b0c10" stroke-width="2.2" stroke-linecap="round"/>
-              <path d="M8.2 14.8l-1.4 1.4a3.5 3.5 0 01-5-5l1.4-1.4" stroke="#0b0c10" stroke-width="2.2" stroke-linecap="round"/>
-              <path d="M15.8 9.2l1.4-1.4a3.5 3.5 0 115 5l-1.4 1.4" stroke="#0b0c10" stroke-width="2.2" stroke-linecap="round"/>
-            </svg>
+          <div class="head-main">
+            <div class="logo" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M10.5 13.5l3-3" stroke="#0b0c10" stroke-width="2.2" stroke-linecap="round"/>
+                <path d="M8.2 14.8l-1.4 1.4a3.5 3.5 0 01-5-5l1.4-1.4" stroke="#0b0c10" stroke-width="2.2" stroke-linecap="round"/>
+                <path d="M15.8 9.2l1.4-1.4a3.5 3.5 0 115 5l-1.4 1.4" stroke="#0b0c10" stroke-width="2.2" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <div>
+              <h1>ABVX Shortener</h1>
+              <div class="sub">Paste a URL → get a short link on <b>go.abvx.xyz</b></div>
+            </div>
           </div>
-          <div>
-            <h1>ABVX Shortener</h1>
-            <div class="sub">Paste a URL → get a short link on <b>go.abvx.xyz</b></div>
+          <div class="head-actions">
+            <div id="theme-controls"></div>
           </div>
         </div>
 
@@ -279,9 +323,27 @@ const LANDING_HTML = `<!doctype html>
             <a class="pill" href="mailto:a.biletskiy@gmail.com">Email</a>
             <a class="pill" href="https://github.com/markoblogo/-abvx-shortener" target="_blank" rel="noreferrer">GitHub</a>
           </div>
+
         </div>
       </div>
     </div>
+
+    <script src="https://cdn.jsdelivr.net/gh/markoblogo/AsciiTheme@main/dist/ascii-theme.umd.js"></script>
+    <script>
+      if (window.AsciiTheme && typeof window.AsciiTheme.initAsciiTheme === "function") {
+        window.AsciiTheme.initAsciiTheme({
+          managedMode: true,
+          defaultMode: "dark",
+          defaultStyle: "default",
+          addThemeToggle: true,
+          addStyleToggle: true,
+          mountSelector: "#theme-controls",
+          mountPlacement: "append",
+          storageKey: "go_abvx_theme_v1",
+          icons: { sun: "☀", moon: "☾" }
+        });
+      }
+    </script>
 
     <script>
       const $ = (id) => document.getElementById(id);
