@@ -266,6 +266,21 @@ const LANDING_HTML = `<!doctype html>
         filter: brightness(1.08);
       }
 
+      .ascii-footnote {
+        margin-top: 10px;
+        font-size: 12px;
+        color: var(--muted);
+        white-space: normal;
+      }
+      .ascii-footnote a {
+        color: inherit;
+        text-decoration: underline;
+        text-underline-offset: 2px;
+      }
+      :root[data-style="ascii"] .ascii-footnote a {
+        color: currentColor;
+      }
+
       @media (max-width: 640px) {
         .head {
           flex-wrap: wrap;
@@ -322,6 +337,11 @@ const LANDING_HTML = `<!doctype html>
             <a class="pill" href="https://abvx.xyz" target="_blank" rel="noreferrer">abvx.xyz</a>
             <a class="pill" href="mailto:a.biletskiy@gmail.com">Email</a>
             <a class="pill" href="https://github.com/markoblogo/-abvx-shortener" target="_blank" rel="noreferrer">GitHub</a>
+          </div>
+
+          <div class="ascii-footnote">
+            This landing uses an experimental ASCII theme mode (toggle in the header) · Source:
+            <a href="https://github.com/markoblogo/AsciiTheme" target="_blank" rel="noreferrer">AsciiTheme</a>
           </div>
 
         </div>
