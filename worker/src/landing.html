@@ -182,6 +182,23 @@
         color: currentColor;
       }
 
+      :root[data-style="ascii"][data-ascii-mode="light"] {
+        --text: #0b2a7a;
+        --muted: rgba(11, 42, 122, 0.72);
+        --border: rgba(11, 42, 122, 0.34);
+        --panel: rgba(11, 42, 122, 0.04);
+      }
+
+      :root[data-style="ascii"][data-ascii-mode="light"] .card {
+        background: rgba(11, 42, 122, 0.03);
+      }
+
+      :root[data-style="ascii"][data-ascii-mode="light"] input,
+      :root[data-style="ascii"][data-ascii-mode="light"] .out,
+      :root[data-style="ascii"][data-ascii-mode="light"] .pill {
+        background: rgba(11, 42, 122, 0.03);
+      }
+
       @media (max-width: 640px) {
         .head {
           flex-wrap: wrap;
