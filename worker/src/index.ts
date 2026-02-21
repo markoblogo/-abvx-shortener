@@ -103,7 +103,7 @@ const LANDING_HTML = `<!doctype html>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>ABVX Shortener</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/markoblogo/AsciiTheme@main/dist/style.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/markoblogo/AsciiTheme@0.1.0/dist/style.css" />
     <style>
       :root {
         --bg: #0b0c10;
@@ -348,7 +348,7 @@ const LANDING_HTML = `<!doctype html>
       </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/gh/markoblogo/AsciiTheme@main/dist/ascii-theme.umd.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/markoblogo/AsciiTheme@0.1.0/dist/ascii-theme.umd.js"></script>
     <script>
       if (window.AsciiTheme && typeof window.AsciiTheme.initAsciiTheme === "function") {
         window.AsciiTheme.initAsciiTheme({
