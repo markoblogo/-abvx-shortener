@@ -367,7 +367,20 @@ const LANDING_HTML = `<!doctype html>
 
     <script src="https://unpkg.com/@abvx/ascii-theme@0.2.0/dist/ascii-theme.umd.js"></script>
     <script>
+      function resetAsciiStyleOnLoad(storageKey) {
+        document.documentElement.setAttribute("data-style", "default");
+        try {
+          const raw = localStorage.getItem(storageKey);
+          if (!raw) return;
+          const parsed = JSON.parse(raw);
+          if (!parsed || typeof parsed !== "object" || parsed.style === undefined) return;
+          delete parsed.style;
+          localStorage.setItem(storageKey, JSON.stringify(parsed));
+        } catch {}
+      }
+
       if (window.AsciiTheme && typeof window.AsciiTheme.initAsciiTheme === "function") {
+        resetAsciiStyleOnLoad("go_abvx_theme_v1");
         window.AsciiTheme.initAsciiTheme({
           managedMode: true,
           defaultMode: "dark",
