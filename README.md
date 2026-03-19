@@ -8,6 +8,8 @@
 
 A minimal, self-hosted URL shortener for your own domain (**Cloudflare Workers + KV**) + a Chrome extension that shortens the current tab URL and copies it.
 
+Listed on ABVX Lab: https://lab.abvx.xyz/
+
 - No analytics
 - Deterministic slugs (same URL → same short link)
 - Simple auth with an API key
