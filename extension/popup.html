@@ -112,12 +112,7 @@
       .actions { display: flex; gap: 6px; margin-top: 8px; }
       .actions button { width: auto; flex: 1; padding: 8px 10px; }
 
-      .meta {
-        color: var(--muted);
-        font-size: 11px;
-        margin-top: 8px;
-      }
-
+      .meta { color: var(--muted); font-size: 11px; margin-top: 8px; }
       .preview {
         margin-top: 8px;
         display: none;
@@ -126,9 +121,7 @@
         padding: 10px;
       }
 
-      .preview a {
-        color: rgba(106,255,198,0.95);
-      }
+      .preview a { color: rgba(106,255,198,0.95); }
 
       .history {
         margin-top: 8px;
@@ -141,7 +134,6 @@
         border-radius: 10px;
         padding: 8px;
         margin-top: 6px;
-        cursor: pointer;
       }
 
       .history-item:hover {
@@ -152,7 +144,17 @@
         color: rgba(106,255,198,0.95);
       }
 
+      .history-row {
+        display: grid;
+        gap: 6px;
+      }
+
       .muted { color: var(--muted); font-size: 11px; }
+      .history-actions {
+        display: flex;
+        gap: 6px;
+      }
+      .history-actions button { padding: 6px 10px; }
     </style>
   </head>
 
@@ -208,7 +210,10 @@
         </div>
 
         <div class="history">
-          <div class="muted" style="margin-bottom: 4px;">Recent links</div>
+          <div class="muted" style="margin-bottom: 4px; display:flex; align-items:center; justify-content:space-between;">
+            <span>Recent links</span>
+            <button id="openLastBtn" type="button">Open last</button>
+          </div>
           <div id="history"></div>
         </div>
       </div>

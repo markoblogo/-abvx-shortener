@@ -10,6 +10,7 @@ const DEFAULT_STATE = {
 const HISTORY_LIMIT = 20;
 const STORAGE_KEY = "abvx_shortener_config_v2";
 const HISTORY_KEY = "abvx_shortener_history_v2";
+const LAST_SHORT_KEY = "abvx_shortener_last_short";
 
 const $ = (id) => document.getElementById(id);
 const nodes = {
@@ -24,6 +25,7 @@ const nodes = {
   retryBtn: $("retryBtn"),
   copyBtn: $("copyBtn"),
   openBtn: $("openBtn"),
+  openLastBtn: $("openLastBtn"),
   status: $("status"),
   previewWrap: $("previewWrap"),
   shortUrl: $("shortUrl"),
@@ -39,10 +41,11 @@ function setStatus(message, isError = false) {
 
 function getStateFromStorage() {
   return new Promise((resolve) => {
-    chrome.storage.local.get([STORAGE_KEY, HISTORY_KEY], (data) => {
+    chrome.storage.local.get([STORAGE_KEY, HISTORY_KEY, LAST_SHORT_KEY], (data) => {
       resolve({
         config: { ...DEFAULT_STATE, ...data[STORAGE_KEY], history: [], apiKey: data[STORAGE_KEY]?.apiKey || "" },
         history: data[HISTORY_KEY] || [],
+        lastShort: data[LAST_SHORT_KEY] || null,
       });
     });
   });
@@ -83,7 +86,7 @@ function renderHistory(history) {
     row.addEventListener("click", (event) => {
       if (event.target && event.target.tagName === "A") return;
       if (!link) return;
-      chrome.tabs.create({ url: link, active: true });
+      openLink(link);
     });
   });
 }
@@ -170,6 +173,17 @@ async function callShorten(state) {
   return normalizeResponse(data);
 }
 
+function updateOpenLastButton(lastShort) {
+  if (!nodes.openLastBtn) return;
+  nodes.openLastButtonState = Boolean(lastShort?.url);
+  nodes.openLastBtn.disabled = !nodes.openLastButtonState;
+}
+
+function openLink(url) {
+  if (!url) return;
+  chrome.tabs.create({ url, active: true });
+}
+
 function showResult(response) {
   nodes.previewWrap.style.display = "block";
   nodes.shortUrl.textContent = response.shortUrl;
@@ -197,10 +211,12 @@ async function addToHistory(state, response) {
   state.history = next;
   await persistHistory(next);
   renderHistory(next);
+  await chrome.storage.local.set({ [LAST_SHORT_KEY]: { url: response.shortUrl, createdAt: Date.now(), target: state.url } });
+  updateOpenLastButton({ url: response.shortUrl });
 }
 
 async function refreshShortenerBase() {
-  const { config, history } = await getStateFromStorage();
+  const { config, history, lastShort } = await getStateFromStorage();
   config.history = history;
   fillForm(config);
   if (history.length) {
@@ -213,6 +229,8 @@ async function refreshShortenerBase() {
   if (activeTabUrl) {
     nodes.urlInput.value = activeTabUrl;
   }
+
+  updateOpenLastButton(lastShort);
 }
 
 nodes.form.addEventListener("submit", async (event) => {
@@ -278,7 +296,13 @@ nodes.copyBtn.addEventListener("click", async () => {
 
 nodes.openBtn.addEventListener("click", () => {
   if (!nodes.shortUrl.href) return;
-  chrome.tabs.create({ url: nodes.shortUrl.href, active: true });
+  openLink(nodes.shortUrl.href);
+});
+
+nodes.openLastBtn.addEventListener("click", async () => {
+  const { lastShort } = await getStateFromStorage();
+  if (!lastShort?.url) return;
+  openLink(lastShort.url);
 });
 
 nodes.retryBtn.addEventListener("click", () => {

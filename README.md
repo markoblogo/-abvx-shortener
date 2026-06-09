@@ -1,245 +1,189 @@
 # ABVX Shortener
 
+Minimal self-hosted URL shortener on Cloudflare Workers + KV, now with operational controls.
+
+Current milestone: **v0.3**
+
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](./LICENSE)
-[![Built for Cloudflare Workers](https://img.shields.io/badge/Cloudflare-Workers-f38020?logo=cloudflare&logoColor=white)](https://developers.cloudflare.com/workers/)
-[![Chrome Extension (MV3)](https://img.shields.io/badge/Chrome-Extension-4285F4?logo=googlechrome&logoColor=white)](https://developer.chrome.com/docs/extensions/)
-
-Minimal, self-hosted URL shortener for Cloudflare Workers + KV with an opinionated, controllable management layer.
-
-- Deterministic slugs by default
-- Managed links: create/read/update/delete metadata
-- Optional TTL / custom slug / overwrite semantics
-- Security controls for API and extension usage
 
 ---
 
-## Contents
+## Быстрое содержание
 
-- [How it works](#how-it-works)
 - [Quick start (Worker)](#quick-start-worker)
-- [Chrome extension](#chrome-extension)
-- [API v0.2](#api-v02)
-- [Configuration](#configuration)
-- [Threat model](#threat-model)
-- [Release notes](#release-notes)
-- [Migration `v0.1 -> v0.2`](#migration-v01--v02)
+- [Extension MV3](#extension-mv3)
+- [API v0.3](#api-v03)
+- [Trust / Security](#trust--security)
+- [Настройка / vars](#настройка--vars)
+- [Операционный запуск](#операционный-запуск)
+- [Migration v0.1 -> v0.3](#migration-v01--v03)
 
 ---
 
-## How it works
-
-- `GET /health` -> liveness
-- `POST /api/shorten` -> create/reuse short link
-- `GET /api/link/:slug` -> return link metadata
-- `PUT /api/link/:slug` -> update link
-- `DELETE /api/link/:slug` -> soft-delete (`disabled=true`)
-- `GET /:slug` -> 302 redirect
-
-Flow:
-
-```mermaid
-sequenceDiagram
-  participant E as Chrome Extension / Client
-  participant W as Worker API
-  participant K as KV
-  participant R as Browser
-
-  E->>W: POST /api/shorten + X-API-Key
-  W->>W: validate key + origin + rate limit + body
-  W->>K: canonicalize+store/read link
-  K-->>W: link record
-  W-->>E: {slug, shortUrl, created, alreadyExisted}
-  E-->>R: copy/open short URL
-  R->>W: GET /:slug
-  W->>K: lookup slug
-  W-->>R: 302 Location: target
-```
-
----
-
-## Quick start (Cloudflare)
+## Quick start (Worker)
 
 ```bash
 cd worker
 npm i
-```
-
-```bash
+npm run test
 npx wrangler login
-```
-
-```bash
 npx wrangler kv namespace create "LINKS"
-```
-
-- put namespace id into `worker/wrangler.toml`
-
-```bash
 npx wrangler secret put API_KEY
-```
-
-```bash
 npx wrangler deploy
 ```
 
----
-
-## Chrome extension (Load unpacked)
-
-1) `chrome://extensions`
-2) enable **Developer mode**
-3) **Load unpacked**
-4) select `extension/`
-
-Now the popup supports:
-
-- custom endpoint (`https://your-shortener.domain`)
-- API key persistence in local extension storage
-- optional custom slug
-- overwrite flag
-- TTL
-- preview before copy
-- copy/open/retry actions
-- recent history (10–20 entries)
-
-Security note: extension requests are expected over HTTPS.
+В `wrangler.toml` уже есть базовая конфигурация и переменные.
 
 ---
 
-## API v0.2
+## Extension MV3
 
-All API endpoints return JSON for errors with `error` object shape:
+В папке `extension/` уже есть popup + background service worker:
 
-```json
-{ "code": "bad_request|unauthorized|forbidden|not_found|method_not_allowed|conflict|rate_limited|internal_error", "message": "...", "requestId": "..." }
-```
+- popup с preview, copy/open/retry и историей сокращений
+- `quick menu` для страницы и ссылок
+- команды:
+  - `Ctrl+Shift+S` — shorten текущей вкладки
+  - `Alt+Shift+S` — открыть последний short
+- `omnibox` keyword `abvx`
 
-### `POST /api/shorten`
+---
 
-```bash
-curl -X POST "$BASE/api/shorten" \
-  -H "Content-Type: application/json" \
-  -H "X-API-Key: <your-key>" \
-  -d '{"url":"https://example.com","customSlug":"my-link","overwrite":true,"ttl":3600}'
-```
+## API v0.3
 
-Body fields:
+Все API-ответы используют JSON envelope:
+`{ code, message, requestId, details? }`.
+
+### Core
+
+- `GET /health`
+- `GET /:slug` — redirect
+
+### Shortening
+
+`POST /api/shorten`
+
+Body:
 
 - `url` (required)
-- `customSlug` (optional)
-- `overwrite` / `force` (optional)
-- `ttl` (optional, seconds)
-- `expiresAt` (optional ISO string)
+- `customSlug`, `overwrite`, `force`
+- `ttl` / `expiresAt`
+- `redirectType` (`301`|`302`)
+- `fallbackUrl`
+- `private`, `privateTokenRequired`, `visibility`
 
 Response:
 
-```json
-{ "slug":"abc123", "shortUrl":"https://go.abvx.xyz/abc123", "created":true, "alreadyExisted":false }
-```
+- `slug`, `shortUrl`, `created`, `alreadyExisted`, `createdBy`, `expiresAt`, `disabled`, `customSlug`, `redirectType`, `visibility`
 
-### `GET /api/link/:slug`
+### Link management
 
-Returns metadata (requires API key):
+- `GET /api/link/:slug`
+- `PUT /api/link/:slug`
+- `DELETE /api/link/:slug` (soft-delete по умолчанию, `?hard=true` для hard-delete)
 
-```json
-{ "slug":"abc123", "url":"https://example.com", "createdAt":169..., "updatedAt":169..., "createdBy":"key-hash", "expiresAt":169..., "disabled":false, "customSlug":false }
-```
+### New v0.3 operations
 
-### `PUT /api/link/:slug`
-
-Update URL / status / expiry. If changing URL without overwrite-like flags, returns `409`.
-
-### `DELETE /api/link/:slug`
-
-Soft delete by default (`disabled=true`).
-Hard delete by appending `?hard=true`.
-
-### Redirect `GET /:slug`
-
-Responds with `302` to target.
+- `GET /api/links?cursor=...&limit=...` — список с фильтрами (`disabled`, `expired`, `customSlug`, `createdBy`, `q`)
+- `POST /api/links/bulk`
+  - `{ action: disable|restore|delete, slugs: [...], dryRun: true|false }`
+- `GET /api/links/export?format=json|csv`
+- `GET /api/stats?window=minute|hour|day`
+- `GET /api/events?cursor=...&type=create|update|delete|soft-delete|restore`
 
 ---
 
-## Configuration
+## Trust / Security
 
-| Variable | Default | Description |
-| --- | --- | --- |
-| `BASE_URL` | `https://go.abvx.xyz` | Base URL for returned short links |
-| `RATE_LIMIT_WINDOW_SEC` | `60` | Rate-limit window in seconds |
-| `RATE_LIMIT_MAX` | `30` | Rate-limit max requests per window |
-| `ALLOWED_ORIGINS` | `` | Comma-separated allowlist for browser origin/referer |
-| `ALLOW_NO_ORIGIN` | `false` | Allow requests without origin/referer when true |
-| `STRIP_TRAILING_SLASH` | `true` | Remove trailing slash before hashing |
-| `MAX_URL_LENGTH` | `2048` | Maximum accepted URL length |
-| `DEFAULT_TTL_SECONDS` | `0` | Optional default TTL, in seconds |
+### Endpoint hardening
 
-`API_KEY` must be configured as secret.
+- Rate limit на `POST /api/shorten` по IP + API key
+- CORS/Origin allowlist (`ALLOWED_ORIGINS`, `ALLOW_NO_ORIGIN`)
+- URL canonicalize + deny/allow домены (`ALLOW_URL_DOMAINS`, `DENY_URL_DOMAINS`)
+- opt-in URL precheck hook (`URL_PRECHECK_URL`)
+
+### Trust modes
+
+- `TRUST_MODE=personal` — полный доступ (по авторизации)
+- `TRUST_MODE=readonly` — только чтение
+- `TRUST_MODE=readonly-create` — только `POST /api/shorten` + редирект
+
+### API keys
+
+- legacy: единый `API_KEY`
+- phased rotation: `API_KEYS_JSON`
+  - `[{ "id": "writer-1", "role": "writer", "secret": "..." }]`
+  - роли: `reader`, `writer`, `admin`
 
 ---
 
-## Threat model
+## Настройка / vars
 
-- API is protected by `X-API-Key` and server-side validation.
-- Browser client origin/referer allowlist and `ALLOW_NO_ORIGIN` are controls for non-browser integrations.
-- URL validation blocks non-HTTP/S and common local/private/loopback hosts.
-- Rate limits protect `/api/shorten` by IP + key.
-- Links are canonicalized before hashing to reduce duplicates.
-- Soft-delete preserves history by default.
+| Variable | Default | Purpose |
+|---|---|---|
+| `BASE_URL` | `https://go.abvx.xyz` | base URL для returned short URL |
+| `RATE_LIMIT_WINDOW_SEC` | `60` | window for shorten |
+| `RATE_LIMIT_MAX` | `30` | max in window |
+| `ALLOWED_ORIGINS` | `` | comma-separated allowlist |
+| `ALLOW_NO_ORIGIN` | `false` | allow requests without Origin |
+| `STRIP_TRAILING_SLASH` | `true` | canonicalize slash |
+| `MAX_URL_LENGTH` | `2048` | hard length limit |
+| `DEFAULT_TTL_SECONDS` | `0` | default TTL for new links |
+| `TRUST_MODE` | `personal` | trust mode |
+| `ALLOW_URL_DOMAINS` | `` | allowed target-domain suffixes |
+| `DENY_URL_DOMAINS` | `` | blocked target-domain suffixes |
+| `URL_PRECHECK_URL` | `` | optional external URL policy endpoint |
+| `URL_PRECHECK_TIMEOUT_MS` | `1500` | precheck timeout |
+| `URL_PRECHECK_FAIL_OPEN` | `false` | fallback on hook fail |
+| `DEFAULT_REDIRECT_TYPE` | `302` | default redirect type |
+| `STATS_RETENTION_DAYS` | `30` | metrics/events retention approximation |
+| `API_KEYS_JSON` | `` | JSON role key list |
+| `LINKS_INDEX_D1_URL` | `` | optional D1 index migration path (v0.4+) |
 
-What this does not do:
+---
 
-- No analytics, no geofencing, no anti-phishing scoring, no click-level auth.
-- No user/session management beyond shared API key.
+## Операционный запуск
+
+- Runbook миграции: `docs/migration.md`
+- Операционная документация v0.3: `docs/v0.3.md`
+- Ops чеклист: `docs/ops.md`
+- Release checklist: `RELEASE_CHECKLIST.md`
+
+### CLI
+
+```bash
+./bin/abvx-shorten shorten https://example.com --custom-slug promo
+./bin/abvx-shorten stats --window hour
+./bin/abvx-shorten list --limit 20 --disabled false
+./bin/abvx-shorten bulk-disable abc123 old-link --dry-run true
+```
+
+### Bookmarklet
+
+`javascript:(function(){window.prompt("ABVX URL", "https://go.abvx.xyz")&&window.open((()=>{const e=window.prompt("ABVX URL","https://go.abvx.xyz");const k=window.prompt("ABVX API key","your-api-key");if(!e||!k)return null;return e.replace(/\/$/,"")+"/api/shorten";})(),"_self")})();`
+
+> Для production лучше отдавать ссылку от вашей domain и хранить API key в защищённом клиенте.
+
+---
+
+## Migration `v0.1 -> v0.3`
+
+- v0.1 хранил plain URL в KV
+- v0.2 + v0.3 перешли на JSON запись link-record с метаданными
+- миграция v0.1 -> v0.2 по одному и тому же скрипту `worker/scripts/migrate-kv.mjs`
+
+```bash
+cd worker
+npm run migrate-kv:dry
+npm run migrate-kv:canary
+npm run migrate-kv
+```
+
+Смотрите `docs/migration.md` и `RELEASE_CHECKLIST.md` для incident checklist.
 
 ---
 
 ## Compatibility
 
-- Worker: Cloudflare Workers runtime only
-- Extension: Chrome Manifest V3 (also works on Chromium browsers compatible with MV3)
-
----
-
-## Migration `v0.1 -> v0.2`
-
-- data storage changed from raw URL string to JSON link record in KV
-- added API management endpoints and extension config/history
-- added URL hardening/rate control and standardized errors
-
-Existing v0.1 records (old raw URL values) are lazily migrated on first read.
-
-### Production-safe KV migration (bulk v0.1 legacy format -> v0.2 JSON)
-
-The migration script is intentionally conservative and idempotent for legacy records.
-Use the dedicated runbook in [`docs/migration.md`](/Users/antonbiletskiy-volokh/Documents/Codex/2026-06-09/markoblogo-abvx-shortener-https-github-com/repo/docs/migration.md) for safe operational execution.
-
-```bash
-cd worker
-
-export KV_NAMESPACE_ID=<your-kv-namespace-id>
-export CLOUDFLARE_ACCOUNT_ID=<your-cloudflare-account-id>
-export CLOUDFLARE_API_TOKEN=<api-token-with-kv-edit>
-export MIGRATE_CREATED_BY="v0.2-migration"
-export DEFAULT_TTL_SECONDS=0
-```
-
-Optional controls:
-
-- `MAX_KEYS` — process at most N keys (for smoke checks)
-- `LIMIT` — page size for KV list calls (default 1000, max 1000)
-- `DRY_RUN=true` — validate what will change without writing
-- `LOG_FORMAT=json` — emit machine-readable logs (`key=... status=...` style in JSON)
-
-Prefer using npm run profiles:
-
-```bash
-npm run migrate-kv:dry      # pre-flight no-write check (default MAX_KEYS=20)
-npm run migrate-kv:canary   # controlled canary (MAX_KEYS=200)
-npm run migrate-kv           # full rollout (must set env controls explicitly)
-```
-
----
-
-## Release notes
-
-See `CHANGELOG.md`.
+- Worker: Cloudflare Workers
+- Extension: Chrome MV3 (Chromium-варианты тоже)

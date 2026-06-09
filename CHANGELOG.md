@@ -1,5 +1,31 @@
 # Changelog
 
+## v0.3.0
+
+- Added operational APIs:
+  - `GET /api/stats`
+  - `GET /api/links`
+  - `POST /api/links/bulk`
+  - `GET /api/links/export`
+  - `GET /api/events`
+- Added private link support in redirect flow:
+  - `private`, `privateTokenRequired`, `redirectType`, `fallbackUrl`
+- Added trust model:
+  - `TRUST_MODE=personal|readonly|readonly-create`
+  - `API_KEYS_JSON` role support (`admin`/`writer`/`reader`)
+- Extended allow/deny policy and optional URL precheck hook.
+- Added URL-level observability and lightweight KV audit trail:
+  - redirect + API + conflict metrics
+  - immutable `events` records
+- Added extension operational UX:
+  - command palette and shortcuts (`Ctrl+Shift+S`, `Alt+Shift+S`)
+  - context menu and omnibox (`abvx`)
+  - history quick actions in popup and "open last"
+- Added production-safe KV migration tooling:
+  - `migrate-kv:dry` and `migrate-kv:canary` npm scripts
+  - JSON structured logs and migration incident checklist
+- Added CLI entrypoint `bin/abvx-shorten` and `docs/v0.3.md`, `docs/ops.md`
+
 ## v0.2.0
 
 - Added secure-by-default API defaults and configurable API allowlisting

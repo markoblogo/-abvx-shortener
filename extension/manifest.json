@@ -1,13 +1,44 @@
 {
   "manifest_version": 3,
   "name": "ABVX Shortener",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Shorten the current tab URL using your own ABVX-compatible endpoint and copy it.",
   "action": {
     "default_title": "Shorten & Copy",
     "default_popup": "popup.html"
   },
-  "permissions": ["activeTab", "clipboardWrite", "storage", "tabs"],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "omnibox": {
+    "keyword": "abvx"
+  },
+  "commands": {
+    "abvx-quick-shorten": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+S",
+        "mac": "MacCtrl+Shift+S"
+      },
+      "description": "Shorten current tab URL"
+    },
+    "abvx-open-last-short": {
+      "suggested_key": {
+        "default": "Alt+Shift+S",
+        "mac": "MacCtrl+Shift+O"
+      },
+      "description": "Open last generated short URL"
+    }
+  },
+  "permissions": [
+    "activeTab",
+    "clipboardWrite",
+    "storage",
+    "tabs",
+    "contextMenus",
+    "commands",
+    "notifications"
+  ],
   "host_permissions": ["https://*/*"],
   "icons": {
     "16": "icons/icon16.png",

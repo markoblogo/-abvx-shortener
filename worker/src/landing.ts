@@ -40,14 +40,18 @@ export const LANDING_HTML = `<!doctype html>
   <body>
     <div class="card">
       <h1>ABVX Shortener</h1>
-      <p>Minimal, personal URL shortener built on Cloudflare Workers + KV.</p>
+      <p>Operational URL shortener with redirect + management APIs (Workers + KV).</p>
       <ul>
         <li><a href="/health">health</a></li>
         <li><code>POST /api/shorten</code> — create or lookup short links</li>
-        <li><code>GET /:slug</code> — redirect</li>
         <li><code>GET /api/link/:slug</code> — link metadata (auth required)</li>
-        <li><code>PUT /api/link/:slug</code> — update target, ttl, disable</li>
+        <li><code>PUT /api/link/:slug</code> — update target, ttl, visibility, disabled</li>
         <li><code>DELETE /api/link/:slug</code> — soft delete</li>
+        <li><code>GET /api/links</code> — list links</li>
+        <li><code>POST /api/links/bulk</code> — bulk disable/restore/delete</li>
+        <li><code>GET /api/stats</code> — redirect + API metrics</li>
+        <li><code>GET /api/events</code> — audit events</li>
+        <li><code>GET /:slug</code> — redirect</li>
       </ul>
     </div>
   </body>

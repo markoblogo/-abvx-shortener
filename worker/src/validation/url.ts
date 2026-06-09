@@ -1,8 +1,18 @@
 import type { WorkerEnv } from "../env";
+import { getConfig } from "../env";
 
 export interface CanonicalizeOptions {
   stripTrailingSlash?: boolean;
   maxLength?: number;
+  trustConfig?: {
+    allowUrlDomains: string[];
+    denyUrlDomains: string[];
+  };
+}
+
+interface PrecheckPayload {
+  url: string;
+  hostname: string;
 }
 
 function isLocalOrPrivateHost(host: string): boolean {
@@ -21,21 +31,73 @@ function isLocalOrPrivateHost(host: string): boolean {
     return true;
   }
 
-  // IPv6 private/loopback heuristics
-  if (lowered.startsWith("fc") || lowered.startsWith("fd") || lowered.startsWith("fe80") || lowered === "::1") {
+  if (lowered.startsWith("fc") || lowered.startsWith("fd") || lowered.startsWith("fe80")) {
     return true;
   }
 
   return false;
 }
 
+function normalizeDomainList(raw: string[]): string[] {
+  return raw
+    .map((value) => value.trim().toLowerCase())
+    .filter(Boolean)
+    .map((value) => value.replace(/^\./, ""));
+}
+
+function hasAllowedDomain(host: string, allowed: string[]): boolean {
+  if (!allowed.length) return true;
+  const target = host.toLowerCase();
+  return allowed.some((entry) => target === entry || target.endsWith(`.${entry}`));
+}
+
+function hasDeniedDomain(host: string, denied: string[]): boolean {
+  if (!denied.length) return false;
+  const target = host.toLowerCase();
+  return denied.some((entry) => target === entry || target.endsWith(`.${entry}`));
+}
+
+async function runSafetyPrecheck(env: WorkerEnv, rawUrl: string, hostname: string): Promise<void> {
+  if (!env.URL_PRECHECK_URL) {
+    return;
+  }
+
+  const timeout = Number.isFinite(Number(env.URL_PRECHECK_TIMEOUT_MS)) ? Number(env.URL_PRECHECK_TIMEOUT_MS) : 1500;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeout);
+
+  try {
+    const response = await fetch(env.URL_PRECHECK_URL, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ url: rawUrl, hostname }),
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      if (env.URL_PRECHECK_FAIL_OPEN === "1" || env.URL_PRECHECK_FAIL_OPEN === "true") {
+        return;
+      }
+      throw new Error("URL precheck rejected by external policy");
+    }
+
+    const payload = (await response.json().catch(() => ({}))) as Partial<PrecheckPayload> & { allowed?: boolean; reason?: string };
+    if (payload.allowed === false) {
+      throw new Error(payload.reason || "URL precheck rejected");
+    }
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export function canonicalizeUrl(input: string, env: WorkerEnv, options: CanonicalizeOptions = {}): string {
+  const cfg = getConfig(env);
   const raw = input.trim();
   if (!raw) {
     throw new Error("Missing URL");
   }
 
-  const maxLen = options.maxLength ?? Number(env.MAX_URL_LENGTH ?? 2048);
+  const maxLen = options.maxLength ?? cfg.maxUrlLength;
   if (raw.length > maxLen) {
     throw new Error("URL is too long");
   }
@@ -56,6 +118,20 @@ export function canonicalizeUrl(input: string, env: WorkerEnv, options: Canonica
   parsed.hash = "";
   parsed.hostname = parsed.hostname.toLowerCase();
 
+  const host = parsed.hostname;
+
+  if (!hasAllowedDomain(host, normalizeDomainList(options.trustConfig?.allowUrlDomains ?? cfg.allowUrlDomains))) {
+    throw new Error("URL domain is not allowed");
+  }
+
+  if (hasDeniedDomain(host, normalizeDomainList(options.trustConfig?.denyUrlDomains ?? cfg.denyUrlDomains))) {
+    throw new Error("URL domain is denied");
+  }
+
+  if (isLocalOrPrivateHost(host)) {
+    throw new Error("Local/private hosts are not allowed");
+  }
+
   if (options.stripTrailingSlash !== false) {
     const path = parsed.pathname;
     if (path.length > 1 && path.endsWith("/")) {
@@ -63,11 +139,14 @@ export function canonicalizeUrl(input: string, env: WorkerEnv, options: Canonica
     }
   }
 
-  if (isLocalOrPrivateHost(parsed.hostname)) {
-    throw new Error("Local/private hosts are not allowed");
-  }
-
   return parsed.toString();
+}
+
+export async function canonicalizeUrlWithPrecheck(raw: string, env: WorkerEnv, options: CanonicalizeOptions = {}): Promise<string> {
+  const url = canonicalizeUrl(raw, env, options);
+  const parsed = new URL(url);
+  await runSafetyPrecheck(env, url, parsed.hostname);
+  return url;
 }
 
 export function isAllowedScheme(input: string): boolean {

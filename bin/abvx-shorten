@@ -1,0 +1,195 @@
+#!/usr/bin/env node
+
+const args = process.argv.slice(2);
+
+if (!args.length) {
+  printHelp();
+  process.exit(1);
+}
+
+const command = args[0];
+const positional = [];
+const options = new Map();
+
+for (let i = 1; i < args.length; i += 1) {
+  const arg = args[i];
+  if (!arg.startsWith("--") && !arg.startsWith("-")) {
+    positional.push(arg);
+    continue;
+  }
+
+  if (arg === "--help" || arg === "-h") {
+    printHelp();
+    process.exit(0);
+  }
+
+  const eq = arg.indexOf("=");
+  if (eq !== -1) {
+    options.set(arg.slice(0, eq), arg.slice(eq + 1));
+    continue;
+  }
+
+  const next = args[i + 1];
+  const key = arg;
+  if (next && !next.startsWith("-")) {
+    options.set(key, next);
+    i += 1;
+  } else {
+    options.set(key, "true");
+  }
+}
+
+function toBool(value) {
+  if (value === undefined) return false;
+  if (typeof value === "boolean") return value;
+  return value === "true" || value === "1" || value === "yes";
+}
+
+function getConfig() {
+  return {
+    endpoint: options.get("--endpoint") || options.get("-e") || process.env.ABVX_ENDPOINT || "https://go.abvx.xyz",
+    apiKey: options.get("--api-key") || options.get("-k") || process.env.ABVX_API_KEY || "",
+  };
+}
+
+function normalizeEndpoint(url) {
+  const value = String(url || "").trim().replace(/\/$/, "");
+  if (!/^https?:\/\//i.test(value)) {
+    throw new Error("Endpoint must start with http:// or https://");
+  }
+  return value;
+}
+
+async function request(method, path, body, cfg) {
+  const headers = {
+    "content-type": "application/json",
+  };
+  if (cfg.apiKey) {
+    headers["X-API-Key"] = cfg.apiKey;
+  }
+
+  const res = await fetch(`${cfg.endpoint}${path}`, {
+    method,
+    headers,
+    body: body ? JSON.stringify(body) : undefined,
+  });
+
+  const text = await res.text();
+  const payload = text ? safeJson(text) : null;
+
+  if (!res.ok) {
+    const message = payload?.message || text || `request failed with ${res.status}`;
+    throw new Error(`${res.status} ${res.statusText}: ${message}`);
+  }
+
+  return payload || { ok: true };
+}
+
+function safeJson(value) {
+  try {
+    return JSON.parse(value);
+  } catch {
+    return null;
+  }
+}
+
+function printHelp() {
+  console.log(`ABVX Shortener CLI
+Usage:
+  abvx-shorten shorten <url> [--endpoint URL] [--api-key KEY] [--custom-slug SLUG] [--overwrite] [--ttl SECONDS]
+  abvx-shorten stats [--endpoint URL] [--api-key KEY] [--window minute|hour|day] [--since ISO] [--until ISO]
+  abvx-shorten list [--endpoint URL] [--api-key KEY] [--limit N] [--disabled true|false] [--expired true|false] [--createdBy ID] [--q TEXT] [--cursor TOKEN]
+  abvx-shorten bulk-disable <slug ...> [--endpoint URL] [--api-key KEY] [--dry-run true|false]
+`);
+}
+
+async function main() {
+  const cfg = getConfig();
+  cfg.endpoint = normalizeEndpoint(cfg.endpoint);
+
+  if (command === "shorten") {
+    const url = positional[0];
+    if (!url) throw new Error("shorten command requires a URL");
+
+    const body = { url };
+    const customSlug = options.get("--custom-slug");
+    if (customSlug) body.customSlug = customSlug;
+    if (toBool(options.get("--overwrite"))) body.overwrite = true;
+
+    const ttl = options.get("--ttl");
+    if (ttl) {
+      const ttlValue = Number(ttl);
+      if (!Number.isFinite(ttlValue) || ttlValue <= 0) {
+        throw new Error("ttl must be positive number");
+      }
+      body.ttl = ttlValue;
+    }
+
+    const data = await request("POST", "/api/shorten", body, cfg);
+    console.log(JSON.stringify(data, null, 2));
+    return;
+  }
+
+  if (command === "stats") {
+    const url = new URL(`${cfg.endpoint}/api/stats`);
+    const window = options.get("--window") || "minute";
+    const since = options.get("--since");
+    const until = options.get("--until");
+    if (window) url.searchParams.set("window", window);
+    if (since) url.searchParams.set("since", since);
+    if (until) url.searchParams.set("until", until);
+
+    const res = await request("GET", `${url.pathname}${url.search}`, null, cfg);
+    console.log(JSON.stringify(res, null, 2));
+    return;
+  }
+
+  if (command === "list") {
+    const url = new URL(`${cfg.endpoint}/api/links`);
+    for (const [key, value] of options.entries()) {
+      if (["--endpoint", "-e", "--api-key", "-k"].includes(key)) continue;
+      if (value === undefined) continue;
+      if (["--disabled", "--expired"].includes(key)) {
+        if (value === "true" || value === "false") {
+          url.searchParams.set(key.slice(2), value);
+        }
+      } else if (["--limit", "--cursor", "--createdBy", "--q"].includes(key)) {
+        url.searchParams.set(key.slice(2), String(value));
+      }
+    }
+
+    const data = await request("GET", `${url.pathname}${url.search}`, null, cfg);
+    console.log(JSON.stringify(data, null, 2));
+    return;
+  }
+
+  if (command === "bulk-disable") {
+    const slugs = positional.length ? positional : (() => {
+      const raw = options.get("--slugs");
+      return raw ? raw.split(",").map((value) => value.trim()).filter(Boolean) : [];
+    })();
+
+    if (!slugs.length) throw new Error("bulk-disable requires at least one slug");
+
+    const data = await request(
+      "POST",
+      "/api/links/bulk",
+      {
+        action: "disable",
+        slugs,
+        dryRun: toBool(options.get("--dry-run")),
+      },
+      cfg,
+    );
+    console.log(JSON.stringify(data, null, 2));
+    return;
+  }
+
+  printHelp();
+  process.exitCode = 1;
+}
+
+main().catch((error) => {
+  console.error(`Error: ${error instanceof Error ? error.message : String(error)}`);
+  process.exit(1);
+});

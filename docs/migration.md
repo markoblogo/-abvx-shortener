@@ -1,4 +1,4 @@
-# KV migration runbook (v0.1 -> v0.2)
+# KV migration runbook (v0.1 -> v0.2/v0.3)
 
 This runbook describes safe production execution of
 `worker/scripts/migrate-kv.mjs` for migrating legacy string KV values
@@ -7,7 +7,7 @@ into normalized JSON records.
 ## What changed in v0.2 migration
 
 - Old payloads are plain strings (legacy URL values).
-- New payloads are JSON records with `slug`, `url`, timestamps and metadata.
+- v0.2/v0.3 payloads are JSON records with `slug`, `url`, timestamps and metadata.
 - Migration is idempotent: already-normalized entries are skipped on re-run.
 
 ## Prerequisites

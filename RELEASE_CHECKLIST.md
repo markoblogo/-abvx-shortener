@@ -1,14 +1,36 @@
-# ABVX Shortener v0.2 Release Checklist
+# ABVX Shortener v0.3 Release Checklist
 
-- [ ] Update `worker/wrangler.toml` variables and secrets.
-- [ ] Verify `API_KEY` in Cloudflare secrets.
-- [ ] Configure optional origin allowlist and non-browser policy.
-- [ ] Deploy Worker and validate:
+- [ ] Update `worker/wrangler.toml` variables and secrets:
+  - [ ] `TRUST_MODE` / `ALLOW_URL_DOMAINS` / `DENY_URL_DOMAINS`
+  - [ ] optional `URL_PRECHECK_URL`, `DEFAULT_REDIRECT_TYPE`
+  - [ ] optional `API_KEYS_JSON` migration settings
+  - [ ] verify `BASE_URL`, `ALLOW_NO_ORIGIN`, `ALLOWED_ORIGINS`
+- [ ] Validate migration tooling for current deployment:
+  - [ ] run `npm run migrate-kv:dry`
+  - [ ] review JSON logs / migrate summary
+  - [ ] run `npm run migrate-kv:canary` when confidence is ready
+  - [ ] run full `npm run migrate-kv` with controlled `MAX_KEYS`
+- [ ] Deploy Worker and validate API/API management:
   - [ ] `GET /health`
-  - [ ] `POST /api/shorten` for valid/invalid URLs
+  - [ ] `POST /api/shorten` (valid/invalid + rate limiting)
   - [ ] `GET /api/link/:slug`
-  - [ ] `PUT /api/link/:slug`
-  - [ ] `DELETE /api/link/:slug`
-  - [ ] `GET /:slug` redirect behavior
-- [ ] Pack and publish Chrome extension with updated popup permissions.
-- [ ] Add note to `CHANGELOG.md` and tag release.
+  - [ ] `GET /api/links`
+  - [ ] `POST /api/links/bulk`
+  - [ ] `GET /api/links/export`
+  - [ ] `GET /api/stats`
+  - [ ] `GET /api/events`
+  - [ ] `GET /:slug` (redirect, expired, disabled, private)
+  - [ ] `PUT /api/link/:slug`, `DELETE /api/link/:slug` audit/rollback expectations
+- [ ] Validate trust mode expectations by matrix:
+  - [ ] `TRUST_MODE=readonly`
+  - [ ] `TRUST_MODE=readonly-create`
+  - [ ] API key roles from `API_KEYS_JSON` (`reader`/`writer`/`admin`)
+- [ ] Publish extension package:
+  - [ ] popup history + open-last actions
+  - [ ] background commands/context menu/omnibox
+- [ ] Run checks and docs:
+  - [ ] `cd worker && npm run lint`
+  - [ ] `cd worker && npm run typecheck`
+  - [ ] `cd worker && npm run test`
+  - [ ] Update `docs/v0.3.md` and `docs/ops.md`
+- [ ] Tag release and add changelog note in `CHANGELOG.md`.
