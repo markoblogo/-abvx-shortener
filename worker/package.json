@@ -10,6 +10,8 @@
     "typecheck": "tsc -p tsconfig.json",
     "test": "vitest run",
     "migrate-kv": "node ./scripts/migrate-kv.mjs",
+    "migrate-kv:dry": "DRY_RUN=true LOG_FORMAT=json MAX_KEYS=20 LIMIT=200 node ./scripts/migrate-kv.mjs",
+    "migrate-kv:canary": "LOG_FORMAT=json MAX_KEYS=200 LIMIT=200 node ./scripts/migrate-kv.mjs",
     "format": "prettier -w ."
   },
   "devDependencies": {

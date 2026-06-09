@@ -211,7 +211,7 @@ Existing v0.1 records (old raw URL values) are lazily migrated on first read.
 ### Production-safe KV migration (bulk v0.1 legacy format -> v0.2 JSON)
 
 The migration script is intentionally conservative and idempotent for legacy records.
-Use this runbook for safer execution and easy rollback verification.
+Use the dedicated runbook in [`docs/migration.md`](/Users/antonbiletskiy-volokh/Documents/Codex/2026-06-09/markoblogo-abvx-shortener-https-github-com/repo/docs/migration.md) for safe operational execution.
 
 ```bash
 cd worker
@@ -228,60 +228,15 @@ Optional controls:
 - `MAX_KEYS` — process at most N keys (for smoke checks)
 - `LIMIT` — page size for KV list calls (default 1000, max 1000)
 - `DRY_RUN=true` — validate what will change without writing
+- `LOG_FORMAT=json` — emit machine-readable logs (`key=... status=...` style in JSON)
 
-#### 1) Pre-flight check (no writes)
-
-```bash
-DRY_RUN=true \
-MAX_KEYS=20 \
-LIMIT=100 \
-node ./scripts/migrate-kv.mjs \
-  2>&1 | tee migration-dryrun-$(date +%F_%H%M%S).log
-```
-
-Expect:
-
-- script prints usage summary without error
-- nonzero counters only for `skipped_*` are normal
-- no write actions in `DRY_RUN` mode
-
-#### 2) Controlled production run (small canary)
+Prefer using npm run profiles:
 
 ```bash
-MAX_KEYS=200 \
-LIMIT=100 \
-node ./scripts/migrate-kv.mjs \
-  2>&1 | tee migration-canary-$(date +%F_%H%M%S).log
+npm run migrate-kv:dry      # pre-flight no-write check (default MAX_KEYS=20)
+npm run migrate-kv:canary   # controlled canary (MAX_KEYS=200)
+npm run migrate-kv           # full rollout (must set env controls explicitly)
 ```
-
-Inspect output:
-
-- `migrated` should be > 0 and `skipped_already_normalized` should increase after reruns
-- verify sample keys in worker:
-
-```bash
-wrangler kv key list --namespace-id "$KV_NAMESPACE_ID" --limit 5
-```
-
-#### 3) Full rollout
-
-Run in controlled windows:
-
-```bash
-MAX_KEYS=10000 \
-LIMIT=1000 \
-node ./scripts/migrate-kv.mjs \
-  2>&1 | tee migration-prod-$(date +%F_%H%M%S).log
-```
-
-You can rerun in smaller chunks using a lower `MAX_KEYS` until all records are migrated.
-Because already normalized records are skipped, repeated runs are safe.
-
-#### 4) Post-run checks
-
-- Search log for `Migration failed` or script exit code != `0`.
-- Confirm redirect behavior for a migrated slug from the old dataset.
-- Keep migration logs for audit/compliance.
 
 ---
 

@@ -8,19 +8,48 @@ const DEFAULT_TTL_SECONDS = Number(process.env.DEFAULT_TTL_SECONDS || "0");
 const DRY_RUN = process.env.DRY_RUN === "1" || process.env.DRY_RUN === "true";
 const MAX_KEYS = Number(process.env.MAX_KEYS || "0");
 const MAX_PER_PAGE = Math.min(1000, Math.max(1, Number(process.env.LIMIT || "1000")));
+const LOG_FORMAT = process.env.LOG_FORMAT || "text";
+const RUN_ID = process.env.MIGRATION_RUN_ID || `run-${Date.now()}`;
+
+const logAsJson = LOG_FORMAT === "json";
+
+function nowIso() {
+  return new Date().toISOString();
+}
+
+function emitLog(event, payload = {}) {
+  if (logAsJson) {
+    const envelope = {
+      ts: nowIso(),
+      runId: RUN_ID,
+      event,
+      dryRun: DRY_RUN,
+      maxKeys: MAX_KEYS,
+      limit: MAX_PER_PAGE,
+      ...payload,
+    };
+    console.log(JSON.stringify(envelope));
+  } else {
+    const msg = `[${nowIso()}] [${event}] ${JSON.stringify(payload)}`;
+    console.log(msg);
+  }
+}
 
 function usage() {
-  console.error(`
+  const usageText = `
 Usage:
   export KV_NAMESPACE_ID=...\n  export CLOUDFLARE_ACCOUNT_ID=...\n  export CLOUDFLARE_API_TOKEN=...\n  node ./scripts/migrate-kv.mjs
 
 Optional:
   DRY_RUN=1            do not write changes
+  LOG_FORMAT=json      emit structured per-key and summary logs
   MIGRATE_CREATED_BY=foo  populate createdBy
   DEFAULT_TTL_SECONDS=86400  set default ttl for migrated legacy links
   MAX_KEYS=500          migrate at most N keys
   LIMIT=500             page size for key listing
-`);
+  MIGRATION_RUN_ID=abc  optional run id for logs
+`;
+  console.error(usageText);
 }
 
 function isLikelyLegacyLinkValue(value) {
@@ -139,11 +168,15 @@ async function main() {
   const maxKeys = Number.isFinite(MAX_KEYS) && MAX_KEYS > 0 ? MAX_KEYS : Number.POSITIVE_INFINITY;
   let cursor = "";
   let migrated = 0;
+  let errorCount = 0;
   let skippedNonCandidate = 0;
   let skippedAlreadyNormalized = 0;
   let skippedLegacyUnsupported = 0;
   let scanned = 0;
   let done = false;
+  const startedAt = nowIso();
+
+  emitLog("migration_start", { startedAt });
 
   while (!done) {
     const payload = await listKeys(cursor);
@@ -160,22 +193,42 @@ async function main() {
       const keyName = item.name || item.key;
       if (!isMigrateCandidateKey(keyName)) {
         skippedNonCandidate += 1;
+        emitLog("key_skipped", {
+          key: keyName,
+          reason: "non_candidate",
+          status: "skipped",
+        });
         continue;
       }
 
       const raw = await getValue(keyName);
       if (!raw) {
         skippedLegacyUnsupported += 1;
+        emitLog("key_skipped", {
+          key: keyName,
+          reason: "empty_value",
+          status: "skipped",
+        });
         continue;
       }
 
       if (isRecordValue(raw)) {
         skippedAlreadyNormalized += 1;
+        emitLog("key_skipped", {
+          key: keyName,
+          reason: "already_normalized",
+          status: "skipped",
+        });
         continue;
       }
 
       if (!isLikelyLegacyLinkValue(raw)) {
         skippedLegacyUnsupported += 1;
+        emitLog("key_skipped", {
+          key: keyName,
+          reason: "unsupported_value",
+          status: "skipped",
+        });
         continue;
       }
 
@@ -191,8 +244,22 @@ async function main() {
         expiresAt: getExpiresAt(),
       };
 
-      await putValue(keyName, JSON.stringify(next));
-      migrated += 1;
+      try {
+        await putValue(keyName, JSON.stringify(next));
+        migrated += 1;
+        emitLog("key_migrated", {
+          key: keyName,
+          status: "migrated",
+        });
+      } catch (error) {
+        errorCount += 1;
+        emitLog("key_error", {
+          key: keyName,
+          status: "error",
+          error: error instanceof Error ? error.message : String(error),
+        });
+        throw error;
+      }
     }
 
     const info = payload.result_info || {};
@@ -210,9 +277,24 @@ async function main() {
   console.log(` skipped_non_candidate=${skippedNonCandidate}`);
   console.log(` skipped_already_normalized=${skippedAlreadyNormalized}`);
   console.log(` skipped_unsupported=${skippedLegacyUnsupported}`);
+  console.log(` errors=${errorCount}`);
   if (DRY_RUN) {
     console.log("DRY_RUN enabled: no writes were performed");
   }
+
+  emitLog("migration_summary", {
+    status: errorCount > 0 ? "error" : "ok",
+    scanned,
+    migrated,
+    skippedNonCandidate,
+    skippedAlreadyNormalized,
+    skippedLegacyUnsupported,
+    errors: errorCount,
+    dryRun: DRY_RUN,
+    finishedAt: nowIso(),
+    maxKeys,
+    limit: MAX_PER_PAGE,
+  });
 }
 
 main().catch((error) => {
