@@ -6,16 +6,18 @@ export const LANDING_HTML = `<!doctype html>
     <title>ABVX Shortener</title>
     <style>
       :root {
-        --bg: #0b0c10;
+        --bg: #09090b;
+        --surface: #15181d;
         --text: #eef0f2;
         --muted: #9ca3af;
+        --link: #8ad9ff;
       }
       html, body {
         margin: 0;
         min-height: 100%;
         font-family: Inter, ui-sans-serif, system-ui, sans-serif;
         color: var(--text);
-        background: #09090b;
+        background: var(--bg);
       }
       body {
         display: grid;
@@ -23,36 +25,99 @@ export const LANDING_HTML = `<!doctype html>
         padding: 24px;
       }
       .card {
-        width: min(720px, 100%);
+        width: min(840px, 100%);
         border: 1px solid #2f343e;
         border-radius: 16px;
         padding: 24px;
-        background: linear-gradient(180deg, #15181d, #10131a);
+        background: linear-gradient(180deg, var(--surface), #10131a);
       }
       h1 {
         margin-top: 0;
+        font-size: 1.45rem;
       }
       a {
-        color: #8ad9ff;
+        color: var(--link);
+      }
+      p {
+        color: var(--muted);
+      }
+      .grid {
+        display: grid;
+        gap: 16px;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      }
+      .tile {
+        border: 1px solid #2f343e;
+        border-radius: 12px;
+        padding: 12px;
+      }
+      h2 {
+        margin-top: 0;
+        font-size: 1rem;
+      }
+      code {
+        color: #c6e4ff;
+        word-break: break-all;
+      }
+      .badge {
+        display: inline-block;
+        border: 1px solid #304;
+        background: #1d2a22;
+        border-radius: 999px;
+        padding: 3px 8px;
+        font-size: 0.8rem;
+        color: #a8e6bf;
+      }
+      .footer {
+        margin-top: 16px;
+        color: var(--muted);
+        font-size: 0.9rem;
       }
     </style>
   </head>
   <body>
     <div class="card">
-      <h1>ABVX Shortener</h1>
-      <p>Operational URL shortener with redirect + management APIs (Workers + KV).</p>
-      <ul>
-        <li><a href="/health">health</a></li>
-        <li><code>POST /api/shorten</code> — create or lookup short links</li>
-        <li><code>GET /api/link/:slug</code> — link metadata (auth required)</li>
-        <li><code>PUT /api/link/:slug</code> — update target, ttl, visibility, disabled</li>
-        <li><code>DELETE /api/link/:slug</code> — soft delete</li>
-        <li><code>GET /api/links</code> — list links</li>
-        <li><code>POST /api/links/bulk</code> — bulk disable/restore/delete</li>
-        <li><code>GET /api/stats</code> — redirect + API metrics</li>
-        <li><code>GET /api/events</code> — audit events</li>
-        <li><code>GET /:slug</code> — redirect</li>
-      </ul>
+      <h1>ABVX Shortener <span class="badge">v0.3</span></h1>
+      <p>
+        Self-hosted URL shortener on Cloudflare Workers + KV with operational controls: API management,
+        trust modes, metrics, audit events and Chrome extension UX.
+      </p>
+
+      <div class="grid">
+        <div class="tile">
+          <h2>Core API</h2>
+          <ul>
+            <li><a href="/health">GET /health</a></li>
+            <li><a href="javascript:void(0)">POST /api/shorten</a> — create or fetch short URL</li>
+            <li><code>GET /:slug</code> — redirect</li>
+          </ul>
+        </div>
+
+        <div class="tile">
+          <h2>Management</h2>
+          <ul>
+            <li><code>GET /api/link/:slug</code> — metadata</li>
+            <li><code>PUT /api/link/:slug</code> — update settings</li>
+            <li><code>DELETE /api/link/:slug</code> — soft delete / hard delete</li>
+            <li><code>GET /api/links</code> — list + filters</li>
+            <li><code>POST /api/links/bulk</code> — bulk disable/restore/delete</li>
+          </ul>
+        </div>
+
+        <div class="tile">
+          <h2>Observability</h2>
+          <ul>
+            <li><code>GET /api/stats</code> — redirect/API counters</li>
+            <li><code>GET /api/events</code> — immutable audit trail</li>
+            <li><code>GET /api/links/export</code> — json/csv export</li>
+          </ul>
+        </div>
+      </div>
+
+      <p class="footer">
+        API controls: origin allowlist, rate limiting, URL allow/deny domains, optional precheck hook,
+        private links and key-rotation support (`API_KEY` + `API_KEYS_JSON`).
+      </p>
     </div>
   </body>
 </html>`;
