@@ -9,28 +9,46 @@ jobs:
     runs-on: ubuntu-latest
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-    defaults:
-      run:
-        working-directory: worker
-
     steps:
       - uses: actions/checkout@v4
 
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: npm
           cache-dependency-path: worker/package-lock.json
 
-      - name: Install
+      - name: Install worker deps
+        working-directory: worker
         run: npm ci
 
       - name: Lint
+        working-directory: worker
         run: npm run lint
 
       - name: Typecheck
+        working-directory: worker
         run: npm run typecheck
 
       - name: Test
+        working-directory: worker
         run: npm run test
+
+      - name: Install extension deps (optional)
+        run: |
+          if [ -f extension/package-lock.json ] || [ -f extension/package.json ]; then
+            cd extension
+            npm ci
+          else
+            echo "No extension lockfile/package found, skipping"
+          fi
+
+      - name: Extension lint (optional)
+        run: |
+          if [ -f extension/package.json ] && [ -f extension/package-lock.json ] && npm pkg get scripts.lint >/dev/null 2>&1; then
+            cd extension
+            npm run lint
+          else
+            echo "No extension lint script configured, skipping"
+          fi
