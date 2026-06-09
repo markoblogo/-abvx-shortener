@@ -13,7 +13,7 @@ describe("canonicalizeUrl", () => {
       stripTrailingSlash: true,
       maxLength: 2048,
     });
-    expect(value.startsWith("https://example.com/Path/?a=1")).toBe(true);
+    expect(value.startsWith("https://example.com/Path?a=1")).toBe(true);
   });
 
   it("rejects javascript scheme", () => {

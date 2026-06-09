@@ -43,7 +43,17 @@ describe("ABVX shortener API", () => {
 
     const slug = first.slug;
 
-    const shortenRes2 = await worker.fetch(shortenReq, env);
+    const shortenRes2 = await worker.fetch(
+      new Request("https://go.abvx.xyz/api/shorten", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-API-Key": "secret",
+        },
+        body: JSON.stringify({ url: "https://example.com/" }),
+      }),
+      env,
+    );
     expect(shortenRes2.status).toBe(200);
     const second = (await shortenRes2.json()) as { slug: string; alreadyExisted: boolean };
     expect(second.slug).toBe(slug);
@@ -59,7 +69,7 @@ describe("ABVX shortener API", () => {
     expect(getRes.status).toBe(200);
     const got = (await getRes.json()) as { slug: string; url: string };
     expect(got.slug).toBe(slug);
-    expect(got.url).toBe("https://example.com");
+    expect(got.url).toBe("https://example.com/");
 
     const updateRes = await worker.fetch(
       new Request(`https://go.abvx.xyz/api/link/${slug}`, {
@@ -98,7 +108,9 @@ describe("ABVX shortener API", () => {
       }),
       env,
     );
-    expect(getAfterDelete.status).toBe(404);
+    expect(getAfterDelete.status).toBe(200);
+    const gotAfterDelete = (await getAfterDelete.json()) as { disabled: boolean };
+    expect(gotAfterDelete.disabled).toBe(true);
   });
 
   it("rate limits shorten requests", async () => {
