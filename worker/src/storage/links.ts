@@ -88,10 +88,6 @@ function isVisibility(value: unknown): value is "public" | "private" {
   return value === "public" || value === "private";
 }
 
-function toBoolean(value: unknown, fallback = false): boolean {
-  return typeof value === "boolean" ? value : fallback;
-}
-
 export async function getKVRecord(namespace: KVNamespace, key: string): Promise<string | null> {
   return namespace.get(key);
 }
@@ -225,7 +221,7 @@ export async function scanLinks(
     limit?: number;
     includeDisabled?: boolean;
     includeExpired?: boolean;
-    predicate?: (record: LinkRecord) => boolean;
+    predicate?: (_record: LinkRecord) => boolean;
   },
 ): Promise<{ items: LinkRecord[]; cursor: string; done: boolean }> {
   const pageSize = Math.max(1, Math.min(opts.limit || 100, 500));

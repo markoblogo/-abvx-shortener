@@ -1,5 +1,5 @@
 import type { WorkerEnv } from "../env";
-import { getConfig, type TrustMode } from "../env";
+import { type TrustMode } from "../env";
 
 export type ApiRole = "admin" | "writer" | "reader";
 

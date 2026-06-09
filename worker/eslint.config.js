@@ -33,7 +33,7 @@ export default [
       "@typescript-eslint": tseslint,
     },
     rules: {
-      "no-unused-vars": "warn",
+      "no-unused-vars": ["warn", { argsIgnorePattern: "^_" }],
       "@typescript-eslint/no-explicit-any": "off",
     },
   },

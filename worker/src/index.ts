@@ -74,7 +74,7 @@ function getExpiresAt(ttl?: number, expiresAt?: string): number | undefined {
   return undefined;
 }
 
-function shouldIncrementAfterRead(record: LinkRecord, cfg: ResolvedConfig): LinkRecord {
+function shouldIncrementAfterRead(record: LinkRecord): LinkRecord {
   return {
     ...record,
     accessCount: (record.accessCount || 0) + 1,
@@ -133,13 +133,6 @@ function toLinkMeta(record: LinkRecord) {
 
 async function emitAudit(namespace: KVNamespace, event: Omit<LinkEvent, "ts">, retentionDays: number) {
   await addEvent(namespace, { ...event, ts: Date.now() }, retentionDays);
-}
-
-function parseListLimit(value: string | null, fallback = 50, max = 200): number {
-  if (!value) return fallback;
-  const parsed = Number(value);
-  if (!Number.isFinite(parsed) || parsed <= 0) return fallback;
-  return Math.min(max, Math.floor(parsed));
 }
 
 function shouldReturnJson(request: Request): boolean {
@@ -571,7 +564,6 @@ async function handleListLinks(request: Request, env: WorkerEnv, requestId: stri
   const authorization = await ensureAuthorized(request, env, requestId, "read_links");
   if (!authorization.ok) return authorization.response;
 
-  const cfg = getConfig(env);
   const parsed = listLinksQuerySchema.safeParse(Object.fromEntries(new URL(request.url).searchParams.entries()));
   if (!parsed.success) {
     return jsonError("bad_request", parsed.error.issues[0]?.message || "Invalid query", requestId, 400);
@@ -776,7 +768,6 @@ async function handleExportLinks(request: Request, env: WorkerEnv, requestId: st
   const authorization = await ensureAuthorized(request, env, requestId, "links_admin");
   if (!authorization.ok) return authorization.response;
 
-  const cfg = getConfig(env);
   const parsed = exportQuerySchema.safeParse(Object.fromEntries(new URL(request.url).searchParams.entries()));
   if (!parsed.success) {
     return jsonError("bad_request", parsed.error.issues[0]?.message || "Invalid query", requestId, 400);
@@ -851,7 +842,6 @@ async function handleStats(request: Request, env: WorkerEnv, requestId: string):
   const authorization = await ensureAuthorized(request, env, requestId, "stats");
   if (!authorization.ok) return authorization.response;
 
-  const cfg = getConfig(env);
   const parsed = statsQuerySchema.safeParse(Object.fromEntries(new URL(request.url).searchParams.entries()));
   if (!parsed.success) {
     return jsonError("bad_request", parsed.error.issues[0]?.message || "Invalid query", requestId, 400);
@@ -914,7 +904,7 @@ async function handleRedirect(
   }
 
   await incrementMetric(env.LINKS, "redirect_hit", "minute");
-  const touched = shouldIncrementAfterRead(link, cfg);
+  const touched = shouldIncrementAfterRead(link);
   await saveLink(env.LINKS, touched);
 
   const redirectType = link.redirectType || cfg.defaultRedirectType;
