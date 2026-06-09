@@ -1,14 +1,14 @@
 {
   "manifest_version": 3,
   "name": "ABVX Shortener",
-  "version": "0.1.0",
-  "description": "Shorten the current tab URL using abvx.xyz and copy it.",
+  "version": "0.2.0",
+  "description": "Shorten the current tab URL using your own ABVX-compatible endpoint and copy it.",
   "action": {
     "default_title": "Shorten & Copy",
     "default_popup": "popup.html"
   },
-  "permissions": ["activeTab", "clipboardWrite", "storage"],
-  "host_permissions": ["https://go.abvx.xyz/*"],
+  "permissions": ["activeTab", "clipboardWrite", "storage", "tabs"],
+  "host_permissions": ["https://*/*"],
   "icons": {
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",

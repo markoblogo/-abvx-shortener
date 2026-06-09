@@ -1,20 +1,27 @@
 {
   "name": "abvx-shortener-worker",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
     "lint": "eslint .",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "migrate-kv": "node ./scripts/migrate-kv.mjs",
     "format": "prettier -w ."
   },
-  "dependencies": {},
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20260124.0",
+    "@types/node": "^22.10.10",
+    "@typescript-eslint/eslint-plugin": "^8.61.0",
+    "@typescript-eslint/parser": "^8.61.0",
     "eslint": "^9.17.0",
     "prettier": "^3.4.2",
     "typescript": "^5.7.3",
-    "wrangler": "^3.102.0"
+    "vitest": "^3.0.0",
+    "wrangler": "^3.102.0",
+    "zod": "^3.24.1"
   }
 }

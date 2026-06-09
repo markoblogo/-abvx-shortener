@@ -13,6 +13,13 @@ kv_namespaces = [
 # Used for building shortUrl in API responses.
 BASE_URL = "https://go.abvx.xyz"
 
-# Rate limit (per IP) for POST /api/shorten
+# Rate limit (per IP and per API key) for POST /api/shorten.
 RATE_LIMIT_WINDOW_SEC = 60
 RATE_LIMIT_MAX = 30
+
+# V0.2 security controls.
+ALLOW_NO_ORIGIN = "false"
+ALLOWED_ORIGINS = ""
+STRIP_TRAILING_SLASH = "true"
+MAX_URL_LENGTH = 2048
+DEFAULT_TTL_SECONDS = 0

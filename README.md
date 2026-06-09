@@ -4,101 +4,238 @@
 [![Built for Cloudflare Workers](https://img.shields.io/badge/Cloudflare-Workers-f38020?logo=cloudflare&logoColor=white)](https://developers.cloudflare.com/workers/)
 [![Chrome Extension (MV3)](https://img.shields.io/badge/Chrome-Extension-4285F4?logo=googlechrome&logoColor=white)](https://developer.chrome.com/docs/extensions/)
 
-**License:** MIT. See [LICENSE](LICENSE).
+Minimal, self-hosted URL shortener for Cloudflare Workers + KV with an opinionated, controllable management layer.
 
-A minimal, self-hosted URL shortener for your own domain (**Cloudflare Workers + KV**) + a Chrome extension that shortens the current tab URL and copies it.
+- Deterministic slugs by default
+- Managed links: create/read/update/delete metadata
+- Optional TTL / custom slug / overwrite semantics
+- Security controls for API and extension usage
 
-Listed on ABVX Lab: https://lab.abvx.xyz/
+---
 
-- No analytics
-- Deterministic slugs (same URL → same short link)
-- Simple auth with an API key
+## Contents
 
-![Screenshot](.github/assets/screenshot.png)
+- [How it works](#how-it-works)
+- [Quick start (Worker)](#quick-start-worker)
+- [Chrome extension](#chrome-extension)
+- [API v0.2](#api-v02)
+- [Configuration](#configuration)
+- [Threat model](#threat-model)
+- [Release notes](#release-notes)
+- [Migration `v0.1 -> v0.2`](#migration-v01--v02)
 
 ---
 
 ## How it works
-- `GET /:slug` → **302** redirect to the stored long URL
-- `POST /api/shorten` → stores `slug → url` in Cloudflare KV and returns `{ slug, shortUrl }`
 
-## Repo structure
-- `worker/` — Cloudflare Worker
-- `extension/` — Chrome extension (Manifest V3)
+- `GET /health` -> liveness
+- `POST /api/shorten` -> create/reuse short link
+- `GET /api/link/:slug` -> return link metadata
+- `PUT /api/link/:slug` -> update link
+- `DELETE /api/link/:slug` -> soft-delete (`disabled=true`)
+- `GET /:slug` -> 302 redirect
+
+Flow:
+
+```mermaid
+sequenceDiagram
+  participant E as Chrome Extension / Client
+  participant W as Worker API
+  participant K as KV
+  participant R as Browser
+
+  E->>W: POST /api/shorten + X-API-Key
+  W->>W: validate key + origin + rate limit + body
+  W->>K: canonicalize+store/read link
+  K-->>W: link record
+  W-->>E: {slug, shortUrl, created, alreadyExisted}
+  E-->>R: copy/open short URL
+  R->>W: GET /:slug
+  W->>K: lookup slug
+  W-->>R: 302 Location: target
+```
 
 ---
 
 ## Quick start (Cloudflare)
-### 1) Install
+
 ```bash
 cd worker
 npm i
 ```
 
-### 2) Login
 ```bash
 npx wrangler login
 ```
 
-### 3) Create KV namespace
 ```bash
 npx wrangler kv namespace create "LINKS"
 ```
-Copy the namespace id into `worker/wrangler.toml` under `kv_namespaces`.
 
-### 4) Set API key secret
+- put namespace id into `worker/wrangler.toml`
+
 ```bash
 npx wrangler secret put API_KEY
 ```
 
-### 5) Deploy
 ```bash
 npx wrangler deploy
 ```
 
-### 6) Custom domain
-Recommended: use a subdomain like `go.yourdomain.com`.
-
-Cloudflare Dashboard → Workers & Pages → your worker → **Triggers → Custom Domains**.
-
 ---
 
 ## Chrome extension (Load unpacked)
-1) Open `chrome://extensions`
-2) Enable **Developer mode**
-3) Click **Load unpacked**
-4) Select the `extension/` folder
 
-The extension will:
-- read current tab URL
-- call `POST https://go.abvx.xyz/api/shorten`
-- copy the short URL to clipboard
+1) `chrome://extensions`
+2) enable **Developer mode**
+3) **Load unpacked**
+4) select `extension/`
+
+Now the popup supports:
+
+- custom endpoint (`https://your-shortener.domain`)
+- API key persistence in local extension storage
+- optional custom slug
+- overwrite flag
+- TTL
+- preview before copy
+- copy/open/retry actions
+- recent history (10–20 entries)
+
+Security note: extension requests are expected over HTTPS.
 
 ---
 
-## API
-### Health
-```bash
-curl https://go.abvx.xyz/health
+## API v0.2
+
+All API endpoints return JSON for errors with `error` object shape:
+
+```json
+{ "code": "bad_request|unauthorized|forbidden|not_found|method_not_allowed|conflict|rate_limited|internal_error", "message": "...", "requestId": "..." }
 ```
 
-### Shorten
+### `POST /api/shorten`
+
 ```bash
-curl -X POST "https://go.abvx.xyz/api/shorten" \
+curl -X POST "$BASE/api/shorten" \
   -H "Content-Type: application/json" \
   -H "X-API-Key: <your-key>" \
-  -d '{"url":"https://example.com/some/long/path?x=1"}'
+  -d '{"url":"https://example.com","customSlug":"my-link","overwrite":true,"ttl":3600}'
 ```
 
+Body fields:
+
+- `url` (required)
+- `customSlug` (optional)
+- `overwrite` / `force` (optional)
+- `ttl` (optional, seconds)
+- `expiresAt` (optional ISO string)
+
+Response:
+
+```json
+{ "slug":"abc123", "shortUrl":"https://go.abvx.xyz/abc123", "created":true, "alreadyExisted":false }
+```
+
+### `GET /api/link/:slug`
+
+Returns metadata (requires API key):
+
+```json
+{ "slug":"abc123", "url":"https://example.com", "createdAt":169..., "updatedAt":169..., "createdBy":"key-hash", "expiresAt":169..., "disabled":false, "customSlug":false }
+```
+
+### `PUT /api/link/:slug`
+
+Update URL / status / expiry. If changing URL without overwrite-like flags, returns `409`.
+
+### `DELETE /api/link/:slug`
+
+Soft delete by default (`disabled=true`).
+Hard delete by appending `?hard=true`.
+
+### Redirect `GET /:slug`
+
+Responds with `302` to target.
+
 ---
 
-## Notes / security
-This is intended for personal use.
+## Configuration
 
-- The API key is stored in the extension, so treat it as “good enough for personal workflows”, not bank-grade security.
-- Optional hardening: Cloudflare WAF / rate limiting for `POST /api/shorten`.
+| Variable | Default | Description |
+| --- | --- | --- |
+| `BASE_URL` | `https://go.abvx.xyz` | Base URL for returned short links |
+| `RATE_LIMIT_WINDOW_SEC` | `60` | Rate-limit window in seconds |
+| `RATE_LIMIT_MAX` | `30` | Rate-limit max requests per window |
+| `ALLOWED_ORIGINS` | `` | Comma-separated allowlist for browser origin/referer |
+| `ALLOW_NO_ORIGIN` | `false` | Allow requests without origin/referer when true |
+| `STRIP_TRAILING_SLASH` | `true` | Remove trailing slash before hashing |
+| `MAX_URL_LENGTH` | `2048` | Maximum accepted URL length |
+| `DEFAULT_TTL_SECONDS` | `0` | Optional default TTL, in seconds |
+
+`API_KEY` must be configured as secret.
 
 ---
 
-## License
-MIT — see [LICENSE](./LICENSE).
+## Threat model
+
+- API is protected by `X-API-Key` and server-side validation.
+- Browser client origin/referer allowlist and `ALLOW_NO_ORIGIN` are controls for non-browser integrations.
+- URL validation blocks non-HTTP/S and common local/private/loopback hosts.
+- Rate limits protect `/api/shorten` by IP + key.
+- Links are canonicalized before hashing to reduce duplicates.
+- Soft-delete preserves history by default.
+
+What this does not do:
+
+- No analytics, no geofencing, no anti-phishing scoring, no click-level auth.
+- No user/session management beyond shared API key.
+
+---
+
+## Compatibility
+
+- Worker: Cloudflare Workers runtime only
+- Extension: Chrome Manifest V3 (also works on Chromium browsers compatible with MV3)
+
+---
+
+## Migration `v0.1 -> v0.2`
+
+- data storage changed from raw URL string to JSON link record in KV
+- added API management endpoints and extension config/history
+- added URL hardening/rate control and standardized errors
+
+Existing v0.1 records (old raw URL values) are lazily migrated on first read.
+
+### Bulk migration (recommended for first rollout)
+
+You can migrate all legacy KV entries in a namespace to JSON format in batch:
+
+```bash
+cd worker
+export KV_NAMESPACE_ID=<your-kv-namespace-id>
+export CLOUDFLARE_ACCOUNT_ID=<your-cloudflare-account-id>
+export CLOUDFLARE_API_TOKEN=<api-token-with-kv-edit>
+export MIGRATE_CREATED_BY="v0.2-migration"
+export DEFAULT_TTL_SECONDS=0
+
+npm run migrate-kv
+```
+
+Dry run (no writes):
+
+```bash
+DRY_RUN=true npm run migrate-kv
+```
+
+Optional controls:
+
+- `MAX_KEYS` — limit processed keys (for smoke checks)
+- `LIMIT` — page size for list calls
+
+---
+
+## Release notes
+
+See `CHANGELOG.md`.
