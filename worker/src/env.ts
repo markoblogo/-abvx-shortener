@@ -7,6 +7,10 @@ export interface ApiKeyConfig {
   secret_hash?: string;
 }
 
+function resolveApiRole(raw: unknown): ApiKeyConfig["role"] {
+  return raw === "admin" ? "admin" : raw === "reader" ? "reader" : "writer";
+}
+
 export interface WorkerEnv {
   LINKS: KVNamespace;
   API_KEY: string;
@@ -98,7 +102,7 @@ export function getConfig(env: WorkerEnv): ResolvedConfig {
           .filter((item) => item && typeof item.id === "string" && typeof item.role === "string")
           .map((item) => ({
             id: String(item.id),
-            role: item.role === "reader" ? "reader" : item.role === "admin" ? "admin" : "writer",
+            role: resolveApiRole(item.role),
             secret: typeof item.secret === "string" ? item.secret : undefined,
             secret_hash: typeof item.secret_hash === "string" ? item.secret_hash : undefined,
           }))

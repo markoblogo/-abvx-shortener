@@ -116,7 +116,7 @@ export const LANDING_HTML = `<!doctype html>
 
       <p class="footer">
         API controls: origin allowlist, rate limiting, URL allow/deny domains, optional precheck hook,
-        private links and key-rotation support (`API_KEY` + `API_KEYS_JSON`).
+        private links and key-rotation support (&#96;API_KEY&#96; + &#96;API_KEYS_JSON&#96;).
       </p>
     </div>
   </body>

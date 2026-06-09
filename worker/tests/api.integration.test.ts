@@ -38,14 +38,14 @@ describe("ABVX shortener API", () => {
 
     const shortenRes1 = await worker.fetch(shortenReq, env);
     expect(shortenRes1.status).toBe(200);
-    const first = await shortenRes1.json();
+    const first = (await shortenRes1.json()) as { slug: string; alreadyExisted: boolean };
     expect(first.alreadyExisted).toBe(false);
 
     const slug = first.slug;
 
     const shortenRes2 = await worker.fetch(shortenReq, env);
     expect(shortenRes2.status).toBe(200);
-    const second = await shortenRes2.json();
+    const second = (await shortenRes2.json()) as { slug: string; alreadyExisted: boolean };
     expect(second.slug).toBe(slug);
     expect(second.alreadyExisted).toBe(true);
 
@@ -57,7 +57,7 @@ describe("ABVX shortener API", () => {
       env,
     );
     expect(getRes.status).toBe(200);
-    const got = await getRes.json();
+    const got = (await getRes.json()) as { slug: string; url: string };
     expect(got.slug).toBe(slug);
     expect(got.url).toBe("https://example.com");
 
@@ -73,7 +73,7 @@ describe("ABVX shortener API", () => {
       env,
     );
     expect(updateRes.status).toBe(200);
-    const updated = await updateRes.json();
+    const updated = (await updateRes.json()) as { url: string };
     expect(updated.url).toBe("https://updated.example.com/path");
 
     const redirectRes = await worker.fetch(new Request(`https://go.abvx.xyz/${slug}`, { method: "GET" }), env);

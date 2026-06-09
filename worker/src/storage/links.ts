@@ -208,11 +208,12 @@ export async function listLinkKeys(namespace: KVNamespace, cursor: string = "", 
     cursor: cursor || undefined,
     limit,
   });
+  const nextCursor = (result as { cursor?: string }).cursor || "";
   const names = (result.keys || []).map((item) => item.name).filter(Boolean) as string[];
   const links = names.filter((name) => !isSystemLinkKey(name));
   return {
     keys: links,
-    cursor: result.cursor || "",
+    cursor: nextCursor,
     done: result.list_complete,
   };
 }
@@ -283,6 +284,7 @@ export async function listEvents(
     cursor: cursor || undefined,
     limit,
   });
+  const nextCursor = (keysResult as { cursor?: string }).cursor || "";
 
   const events: LinkEvent[] = [];
   for (const item of keysResult.keys || []) {
@@ -299,7 +301,7 @@ export async function listEvents(
     }
   }
 
-  return { events, cursor: keysResult.cursor || "", done: keysResult.list_complete };
+  return { events, cursor: nextCursor, done: keysResult.list_complete };
 }
 
 export { MIN_SLUG, MAX_SLUG };
